@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Простая физика</title>
+<style>
+  :root {
+    --bg: #f5f6fa; --panel: #ffffff; --text: #1d2233; --muted: #5d6478;
+    --accent: #3b6cf6; --accent2: #e8590c; --grid: #e3e6ef; --border: #d9dce6;
+    --good: #2b8a3e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12141c; --panel: #1b1e29; --text: #e7e9f0; --muted: #9aa1b5;
+      --accent: #6d93ff; --accent2: #ff8a3d; --grid: #2a2e3d; --border: #2f3445;
+      --good: #51cf66;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  header { padding: 20px 16px 8px; max-width: 1100px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  header p { margin: 0; color: var(--muted); }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1100px; margin: 12px auto 0; padding: 0 16px; }
+  nav button { border: 1px solid var(--border); background: var(--panel); color: var(--text);
+               padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: .95rem; }
+  nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  section { display: none; }
+  section.active { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
+  section.wide.active { display: block; }
+  @media (max-width: 760px) { section.active { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .card h2 { margin: 0 0 6px; font-size: 1.15rem; }
+  .card .hint { color: var(--muted); font-size: .9rem; margin: 0 0 12px; }
+  label { display: block; margin: 10px 0 2px; font-size: .9rem; }
+  label span { float: right; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .btns { display: flex; gap: 8px; margin-top: 14px; }
+  .btns button { flex: 1; padding: 9px; border-radius: 8px; border: 1px solid var(--accent);
+                 background: var(--accent); color: #fff; cursor: pointer; font-size: .95rem; }
+  .btns button.sec { background: transparent; color: var(--accent); }
+  canvas { width: 100%; display: block; border-radius: 8px; background: var(--bg); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 12px; }
+  .stat { background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+  .stat b { display: block; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+  .stat small { color: var(--muted); }
+  .formula { font-family: "Cambria Math", Georgia, serif; font-size: 1.05rem; background: var(--bg);
+             padding: 6px 10px; border-radius: 6px; margin: 6px 0; }
+  .grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .grid-cards .card h3 { margin: 0 0 8px; font-size: 1rem; }
+  .grid-cards .card p { margin: 4px 0; color: var(--muted); font-size: .9rem; }
+  .calc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .calc input, .calc select { width: 100%; padding: 7px; border-radius: 6px; border: 1px solid var(--border);
+                              background: var(--bg); color: var(--text); font-size: .95rem; }
+  .result { margin-top: 10px; font-weight: 600; color: var(--good); min-height: 1.4em; }
+  footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 20px 16px 30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚛️ Простая физика</h1>
+  <p>Интерактивные опыты: меняйте параметры и смотрите, как работают законы физики.</p>
+</header>
+
+<nav id="tabs">
+  <button data-tab="projectile" class="active">Бросок под углом</button>
+  <button data-tab="pendulum">Маятник</button>
+  <button data-tab="spring">Пружина</button>
+  <button data-tab="collision">Столкновения</button>
+  <button data-tab="formulas">Формулы и калькулятор</button>
+</nav>
+
+<main>
+  <!-- ===== Бросок ===== -->
+  <section id="projectile" class="active">
+    <div class="card">
+      <h2>Бросок под углом</h2>
+      <p class="hint">Тело брошено со скоростью v₀ под углом α к горизонту. Сопротивление воздуха не учитываем.</p>
+      <label>Скорость v₀ <span id="pv-v">20 м/с</span></label>
+      <input type="range" id="p-v" min="1" max="50" value="20">
+      <label>Угол α <span id="pv-a">45°</span></label>
+      <input type="range" id="p-a" min="0" max="90" value="45">
+      <label>Начальная высота h₀ <span id="pv-h">0 м</span></label>
+      <input type="range" id="p-h" min="0" max="50" value="0">
+      <label>Ускорение g <span id="pv-g">9.8 м/с²</span></label>
+      <input type="range" id="p-g" min="1.6" max="24.8" step="0.1" value="9.8">
+      <p class="hint" style="margin-top:6px">Луна 1.6 · Марс 3.7 · Земля 9.8 · Юпитер 24.8</p>
+      <div class="btns"><button id="p-run">▶ Бросить</button><button class="sec" id="p-clear">Очистить</button></div>
+      <div class="formula">x = v₀·cos α·t</div>
+      <div class="formula">y = h₀ + v₀·sin α·t − g·t²/2</div>
+    </div>
+    <div class="card">
+      <canvas id="p-canvas" height="420"></canvas>
+      <div class="stats">
+        <div class="stat"><small>Время полёта</small><b id="ps-t">—</b></div>
+        <div class="stat"><small>Дальность</small><b id="ps-l">—</b></div>
+        <div class="stat"><small>Макс. высота</small><b id="ps-hm">—</b></div>
+        <div class="stat"><small>Скорость при падении</small><b id="ps-vf">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Маятник ===== -->
+  <section id="pendulum">
+    <div class="card">
+      <h2>Математический маятник</h2>
+      <p class="hint">Груз на нити. Точное решение считается численно, поэтому видно, как период растёт при больших углах.</p>
+      <label>Длина нити L <span id="mv-l">2 м</span></label>
+      <input type="range" id="m-l" min="0.5" max="5" step="0.1" value="2">
+      <label>Начальный угол θ₀ <span id="mv-a">30°</span></label>
+      <input type="range" id="m-a" min="5" max="170" value="30">
+      <label>Ускорение g <span id="mv-g">9.8 м/с²</span></label>
+      <input type="range" id="m-g" min="1.6" max="24.8" step="0.1" value="9.8">
+      <label>Затухание <span id="mv-d">0</span></label>
+      <input type="range" id="m-d" min="0" max="1" step="0.05" value="0">
+      <div class="btns"><button id="m-run">⏸ Пауза</button><button class="sec" id="m-reset">Сначала</button></div>
+      <div class="formula">T ≈ 2π·√(L / g)</div>
+    </div>
+    <div class="card">
+      <canvas id="m-canvas" height="420"></canvas>
+      <div class="stats">
+        <div class="stat"><small>Период (формула)</small><b id="ms-tf">—</b></div>
+        <div class="stat"><small>Период (измерен)</small><b id="ms-tm">—</b></div>
+        <div class="stat"><small>Угол сейчас</small><b id="ms-a">—</b></div>
+        <div class="stat"><small>Скорость груза</small><b id="ms-v">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Пружина ===== -->
+  <section id="spring">
+    <div class="card">
+      <h2>Груз на пружине</h2>
+      <p class="hint">Гармонические колебания. Следите, как кинетическая энергия переходит в потенциальную и обратно.</p>
+      <label>Масса m <span id="sv-m">1 кг</span></label>
+      <input type="range" id="s-m" min="0.2" max="5" step="0.1" value="1">
+      <label>Жёсткость k <span id="sv-k">20 Н/м</span></label>
+      <input type="range" id="s-k" min="2" max="100" value="20">
+      <label>Амплитуда A <span id="sv-a">0.3 м</span></label>
+      <input type="range" id="s-a" min="0.05" max="0.5" step="0.01" value="0.3">
+      <label>Затухание <span id="sv-d">0</span></label>
+      <input type="range" id="s-d" min="0" max="2" step="0.05" value="0">
+      <div class="btns"><button id="s-run">⏸ Пауза</button><button class="sec" id="s-reset">Сначала</button></div>
+      <div class="formula">T = 2π·√(m / k)</div>
+      <div class="formula">E = k·x²/2 + m·v²/2</div>
+    </div>
+    <div class="card">
+      <canvas id="s-canvas" height="420"></canvas>
+      <div class="stats">
+        <div class="stat"><small>Период</small><b id="ss-t">—</b></div>
+        <div class="stat"><small>Смещение x</small><b id="ss-x">—</b></div>
+        <div class="stat"><small>Кинетическая Eк</small><b id="ss-ek">—</b></div>
+        <div class="stat"><small>Потенциальная Eп</small><b id="ss-ep">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Столкновения ===== -->
+  <section id="collision">
+    <div class="card">
+      <h2>Столкновение шаров</h2>
+      <p class="hint">Два шара на гладкой поверхности. Импульс сохраняется всегда, энергия — только при упругом ударе.</p>
+      <label>Масса шара 1 <span id="cv-m1">2 кг</span></label>
+      <input type="range" id="c-m1" min="0.5" max="10" step="0.5" value="2">
+      <label>Скорость шара 1 <span id="cv-v1">3 м/с</span></label>
+      <input type="range" id="c-v1" min="-5" max="5" step="0.5" value="3">
+      <label>Масса шара 2 <span id="cv-m2">1 кг</span></label>
+      <input type="range" id="c-m2" min="0.5" max="10" step="0.5" value="1">
+      <label>Скорость шара 2 <span id="cv-v2">-1 м/с</span></label>
+      <input type="range" id="c-v2" min="-5" max="5" step="0.5" value="-1">
+      <label>Упругость e <span id="cv-e">1</span></label>
+      <input type="range" id="c-e" min="0" max="1" step="0.05" value="1">
+      <p class="hint" style="margin-top:6px">e = 1 — упругий удар, e = 0 — шары слипаются</p>
+      <div class="btns"><button id="c-run">▶ Пуск</button><button class="sec" id="c-reset">Сначала</button></div>
+      <div class="formula">m₁v₁ + m₂v₂ = m₁v₁′ + m₂v₂′</div>
+    </div>
+    <div class="card">
+      <canvas id="c-canvas" height="300"></canvas>
+      <div class="stats">
+        <div class="stat"><small>Импульс до</small><b id="cs-p0">—</b></div>
+        <div class="stat"><small>Импульс после</small><b id="cs-p1">—</b></div>
+        <div class="stat"><small>Энергия до</small><b id="cs-e0">—</b></div>
+        <div class="stat"><small>Энергия после</small><b id="cs-e1">—</b></div>
+        <div class="stat"><small>Скорости после</small><b id="cs-v">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Формулы ===== -->
+  <section id="formulas" class="wide">
+    <div class="card" style="margin-bottom:16px">
+      <h2>Калькулятор</h2>
+      <p class="hint">Выберите формулу, введите значения — получите ответ.</p>
+      <div class="calc">
+        <select id="f-sel" style="grid-column: 1 / -1"></select>
+        <div id="f-inputs" style="grid-column: 1 / -1" class="calc"></div>
+      </div>
+      <div class="result" id="f-res"></div>
+    </div>
+    <div class="grid-cards" id="f-cards"></div>
+  </section>
+</main>
+
+<footer>Простая физика · все расчёты выполняются прямо в браузере</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (x, d = 2) => (Math.abs(x) < 1e-9 ? 0 : x).toFixed(d).replace('.', ',');
+
+/* ---------- Вкладки ---------- */
+let activeTab = 'projectile';
+$('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('active', s.id === b.dataset.tab));
+  activeTab = b.dataset.tab;
+  resizeAll();
+});
+
+/* ---------- Канвасы с учётом плотности пикселей ---------- */
+const canvases = {};
+function setupCanvas(id) {
+  const c = $(id), ctx = c.getContext('2d');
+  const baseH = +c.getAttribute('height');
+  canvases[id] = { c, ctx, baseH, w: 0, h: baseH };
+}
+function resizeAll() {
+  const dpr = window.devicePixelRatio || 1;
+  for (const k in canvases) {
+    const o = canvases[k];
+    const w = o.c.clientWidth; if (!w) continue;
+    const h = Math.min(o.baseH, Math.max(240, w * 0.75));
+    o.c.width = w * dpr; o.c.height = h * dpr; o.c.style.height = h + 'px';
+    o.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    o.w = w; o.h = h;
+  }
+  drawProjectile();
+}
+['p-canvas', 'm-canvas', 's-canvas', 'c-canvas'].forEach(setupCanvas);
+window.addEventListener('resize', resizeAll);
+
+function bindRange(id, outId, unit, cb, dec) {
+  const el = $(id);
+  const show = () => { const v = +el.value; $(outId).textContent = (dec != null ? v.toFixed(dec) : v) + (unit ? ' ' + unit : ''); };
+  el.addEventListener('input', () => { show(); cb && cb(); }); show();
+  return () => +el.value;
+}
+
+/* ================= Бросок под углом ================= */
+const P = {};
+P.v = bindRange('p-v', 'pv-v', 'м/с', () => drawProjectile());
+P.a = bindRange('p-a', 'pv-a', '°', () => drawProjectile());
+P.h = bindRange('p-h', 'pv-h', 'м', () => drawProjectile());
+P.g = bindRange('p-g', 'pv-g', 'м/с²', () => drawProjectile(), 1);
+let trails = [], flight = null;
+const trailColors = ['#3b6cf6', '#e8590c', '#2b8a3e', '#ae3ec9', '#f59f00', '#0c8599'];
+
+function projParams() {
+  const v = P.v(), a = P.a() * Math.PI / 180, h = P.h(), g = P.g();
+  const vx = v * Math.cos(a), vy = v * Math.sin(a);
+  const T = (vy + Math.sqrt(vy * vy + 2 * g * h)) / g;
+  return { v, a, h, g, vx, vy, T, L: vx * T, Hmax: h + vy * vy / (2 * g), vf: Math.hypot(vx, vy - g * T) };
+}
+function projScale(o) {
+  let maxX = 10, maxY = 10;
+  for (const t of [...trails, { p: projParams() }]) { maxX = Math.max(maxX, t.p.L); maxY = Math.max(maxY, t.p.Hmax); }
+  const pad = 40, sx = (o.w - pad - 20) / (maxX * 1.1), sy = (o.h - pad - 20) / (maxY * 1.15);
+  const s = Math.min(sx, sy);
+  return { s, ox: pad, oy: o.h - pad, maxX: (o.w - pad - 20) / s, maxY: (o.h - pad - 20) / s };
+}
+function drawAxes(ctx, o, sc) {
+  ctx.strokeStyle = css('--grid'); ctx.fillStyle = css('--muted'); ctx.lineWidth = 1; ctx.font = '11px system-ui';
+  const step = niceStep(Math.max(sc.maxX, sc.maxY) / 6);
+  for (let x = 0; x <= sc.maxX; x += step) {
+    const X = sc.ox + x * sc.s; ctx.beginPath(); ctx.moveTo(X, sc.oy); ctx.lineTo(X, 20); ctx.stroke();
+    ctx.fillText(Math.round(x), X - 4, sc.oy + 14);
+  }
+  for (let y = 0; y <= sc.maxY; y += step) {
+    const Y = sc.oy - y * sc.s; ctx.beginPath(); ctx.moveTo(sc.ox, Y); ctx.lineTo(o.w - 10, Y); ctx.stroke();
+    if (y > 0) ctx.fillText(Math.round(y), 8, Y + 4);
+  }
+  ctx.strokeStyle = css('--text'); ctx.beginPath(); ctx.moveTo(sc.ox, 20); ctx.lineTo(sc.ox, sc.oy); ctx.lineTo(o.w - 10, sc.oy); ctx.stroke();
+  ctx.fillText('x, м', o.w - 36, sc.oy - 6); ctx.fillText('y, м', sc.ox + 6, 30);
+}
+function niceStep(raw) { const p = Math.pow(10, Math.floor(Math.log10(raw))); const n = raw / p; return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * p; }
+function trajPath(ctx, sc, p, tEnd) {
+  ctx.beginPath();
+  for (let i = 0; i <= 120; i++) {
+    const t = tEnd * i / 120, x = p.vx * t, y = p.h + p.vy * t - p.g * t * t / 2;
+    const X = sc.ox + x * sc.s, Y = sc.oy - y * sc.s; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y);
+  }
+  ctx.stroke();
+}
+function drawProjectile() {
+  const o = canvases['p-canvas']; if (!o.w) return;
+  const ctx = o.ctx, p = projParams(), sc = projScale(o);
+  ctx.clearRect(0, 0, o.w, o.h); drawAxes(ctx, o, sc);
+  ctx.lineWidth = 2.5;
+  trails.forEach(t => { ctx.strokeStyle = t.color; trajPath(ctx, sc, t.p, t.p.T); });
+  // предпросмотр
+  ctx.setLineDash([5, 5]); ctx.lineWidth = 1.5; ctx.strokeStyle = css('--muted'); trajPath(ctx, sc, p, p.T); ctx.setLineDash([]);
+  // пушка
+  const bx = sc.ox, by = sc.oy - p.h * sc.s;
+  ctx.fillStyle = css('--text'); ctx.fillRect(bx - 8, by, 16, p.h * sc.s);
+  ctx.save(); ctx.translate(bx, by); ctx.rotate(-p.a); ctx.fillRect(0, -4, 26, 8); ctx.restore();
+  if (flight) {
+    ctx.lineWidth = 2.5; ctx.strokeStyle = flight.color; trajPath(ctx, sc, flight.p, flight.t);
+    const t = flight.t, x = flight.p.vx * t, y = flight.p.h + flight.p.vy * t - flight.p.g * t * t / 2;
+    ctx.fillStyle = flight.color; ctx.beginPath(); ctx.arc(sc.ox + x * sc.s, sc.oy - y * sc.s, 7, 0, 7); ctx.fill();
+  }
+  $('ps-t').textContent = fmt(p.T) + ' с'; $('ps-l').textContent = fmt(p.L, 1) + ' м';
+  $('ps-hm').textContent = fmt(p.Hmax, 1) + ' м'; $('ps-vf').textContent = fmt(p.vf, 1) + ' м/с';
+}
+$('p-run').onclick = () => {
+  const p = projParams(), color = trailColors[trails.length % trailColors.length];
+  flight = { p, t: 0, color }; let last = performance.now();
+  const speed = Math.max(1, p.T / 3);
+  (function step(now) {
+    flight.t += (now - last) / 1000 * speed; last = now;
+    if (flight.t >= p.T) { trails.push({ p, color }); if (trails.length > 6) trails.shift(); flight = null; drawProjectile(); return; }
+    drawProjectile(); requestAnimationFrame(step);
+  })(last);
+};
+$('p-clear').onclick = () => { trails = []; flight = null; drawProjectile(); };
+
+/* ================= Маятник ================= */
+const M = { running: true };
+M.l = bindRange('m-l', 'mv-l', 'м', () => resetPendulum(), 1);
+M.a = bindRange('m-a', 'mv-a', '°', () => resetPendulum());
+M.g = bindRange('m-g', 'mv-g', 'м/с²', () => resetPendulum(), 1);
+M.d = bindRange('m-d', 'mv-d', '', null, 2);
+function resetPendulum() {
+  Object.assign(M, { th: M.a() * Math.PI / 180, w: 0, t: 0, hist: [], lastCross: null, period: null, prevW: 0 });
+  $('ms-tf').textContent = fmt(2 * Math.PI * Math.sqrt(M.l() / M.g())) + ' с';
+  $('ms-tm').textContent = 'измеряется…';
+}
+resetPendulum();
+function pendDeriv(th, w) { return [w, -M.g() / M.l() * Math.sin(th) - M.d() * w]; }
+function stepPendulum(dt) {
+  const n = 10, h = dt / n;
+  for (let i = 0; i < n; i++) {
+    const [a1, b1] = pendDeriv(M.th, M.w);
+    const [a2, b2] = pendDeriv(M.th + a1 * h / 2, M.w + b1 * h / 2);
+    const [a3, b3] = pendDeriv(M.th + a2 * h / 2, M.w + b2 * h / 2);
+    const [a4, b4] = pendDeriv(M.th + a3 * h, M.w + b3 * h);
+    const prevW = M.w;
+    M.th += h / 6 * (a1 + 2 * a2 + 2 * a3 + a4); M.w += h / 6 * (b1 + 2 * b2 + 2 * b3 + b4); M.t += h;
+    // период: между двумя остановками в крайнем правом положении (w меняет знак с + на −)
+    if (prevW > 0 && M.w <= 0) { if (M.lastCross != null) M.period = M.t - M.lastCross; M.lastCross = M.t; }
+  }
+  M.hist.push([M.t, M.th]); if (M.hist.length > 600) M.hist.shift();
+}
+function drawPendulum() {
+  const o = canvases['m-canvas'], ctx = o.ctx; if (!o.w) return;
+  ctx.clearRect(0, 0, o.w, o.h);
+  const graphH = o.h * 0.3, top = 20, availH = o.h - graphH - 40;
+  const px = o.w / 2, py = top + availH * 0.25, R = Math.min(availH * 0.7, o.w * 0.4);
+  const r = R * M.l() / 5 + R * 0.15;
+  const bx = px + r * Math.sin(M.th), by = py + r * Math.cos(M.th);
+  ctx.strokeStyle = css('--grid'); ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + r + 20); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = css('--text'); ctx.fillRect(px - 40, py - 5, 80, 5);
+  ctx.strokeStyle = css('--text'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(bx, by); ctx.stroke();
+  ctx.fillStyle = css('--accent2'); ctx.beginPath(); ctx.arc(bx, by, 14, 0, 7); ctx.fill();
+  // график θ(t)
+  const gy = o.h - graphH / 2 - 10, A = Math.max(M.a() * Math.PI / 180, 0.1);
+  ctx.strokeStyle = css('--grid'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(10, gy); ctx.lineTo(o.w - 10, gy); ctx.stroke();
+  ctx.fillStyle = css('--muted'); ctx.font = '11px system-ui'; ctx.fillText('θ(t)', 12, gy - graphH / 2 + 4);
+  if (M.hist.length > 1) {
+    const t0 = M.hist[0][0], t1 = Math.max(M.hist[M.hist.length - 1][0], t0 + 1);
+    ctx.strokeStyle = css('--accent'); ctx.lineWidth = 2; ctx.beginPath();
+    M.hist.forEach(([t, th], i) => { const X = 10 + (t - t0) / (t1 - t0) * (o.w - 20), Y = gy - th / A * graphH / 2 * 0.9; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    ctx.stroke();
+  }
+  $('ms-a').textContent = fmt(M.th * 180 / Math.PI, 1) + '°';
+  $('ms-v').textContent = fmt(Math.abs(M.w * M.l()), 2) + ' м/с';
+  if (M.period) $('ms-tm').textContent = fmt(M.period) + ' с';
+}
+$('m-run').onclick = () => { M.running = !M.running; $('m-run').textContent = M.running ? '⏸ Пауза' : '▶ Пуск'; };
+$('m-reset').onclick = resetPendulum;
+
+/* ================= Пружина ================= */
+const S = { running: true };
+S.m = bindRange('s-m', 'sv-m', 'кг', () => resetSpring(), 1);
+S.k = bindRange('s-k', 'sv-k', 'Н/м', () => resetSpring());
+S.a = bindRange('s-a', 'sv-a', 'м', () => resetSpring(), 2);
+S.d = bindRange('s-d', 'sv-d', '', null, 2);
+function resetSpring() {
+  Object.assign(S, { x: S.a(), v: 0, t: 0, hist: [] });
+  $('ss-t').textContent = fmt(2 * Math.PI * Math.sqrt(S.m() / S.k())) + ' с';
+}
+resetSpring();
+function stepSpring(dt) {
+  const n = 10, h = dt / n, m = S.m(), k = S.k(), c = S.d();
+  for (let i = 0; i < n; i++) { const a = (-k * S.x - c * S.v) / m; S.v += a * h; S.x += S.v * h; S.t += h; }
+  S.hist.push([S.t, S.x]); if (S.hist.length > 600) S.hist.shift();
+}
+function drawSpring() {
+  const o = canvases['s-canvas'], ctx = o.ctx; if (!o.w) return;
+  ctx.clearRect(0, 0, o.w, o.h);
+  const m = S.m(), k = S.k(), Ek = m * S.v * S.v / 2, Ep = k * S.x * S.x / 2, E0 = k * S.a() * S.a() / 2;
+  const cy = o.h * 0.25, wallX = 30, eqX = o.w * 0.5, scale = (o.w * 0.3) / 0.5;
+  const boxX = eqX + S.x * scale, bs = 26 + m * 6;
+  ctx.fillStyle = css('--text'); ctx.fillRect(wallX - 10, cy - 50, 10, 100);
+  ctx.fillRect(wallX - 10, cy + bs / 2, o.w - 40, 3);
+  // пружина зигзагом
+  ctx.strokeStyle = css('--muted'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(wallX, cy);
+  const coils = 14, len = boxX - bs / 2 - wallX;
+  for (let i = 1; i < coils * 2; i++) ctx.lineTo(wallX + len * i / (coils * 2), cy + (i % 2 ? -12 : 12));
+  ctx.lineTo(boxX - bs / 2, cy); ctx.stroke();
+  ctx.fillStyle = css('--accent'); ctx.fillRect(boxX - bs / 2, cy - bs / 2, bs, bs);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(m + ' кг', boxX, cy + 4); ctx.textAlign = 'left';
+  ctx.strokeStyle = css('--accent2'); ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(eqX, cy - 40); ctx.lineTo(eqX, cy + 40); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = css('--muted'); ctx.font = '11px system-ui'; ctx.fillText('x = 0', eqX + 4, cy - 30);
+  // столбики энергии
+  const barTop = o.h * 0.45, barH = o.h * 0.2, bw = 50;
+  [['Eк', Ek, css('--accent')], ['Eп', Ep, css('--accent2')], ['Σ', Ek + Ep, css('--good')]].forEach(([n, v, col], i) => {
+    const x = 40 + i * (bw + 20), hh = E0 ? v / E0 * barH : 0;
+    ctx.fillStyle = css('--grid'); ctx.fillRect(x, barTop, bw, barH);
+    ctx.fillStyle = col; ctx.fillRect(x, barTop + barH - hh, bw, hh);
+    ctx.fillStyle = css('--text'); ctx.fillText(n, x + bw / 2 - 6, barTop + barH + 14);
+  });
+  // график x(t)
+  const gx = 260, gy = barTop + barH / 2, gw = o.w - gx - 10;
+  if (gw > 80) {
+    ctx.strokeStyle = css('--grid'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + gw, gy); ctx.stroke();
+    ctx.fillStyle = css('--muted'); ctx.fillText('x(t)', gx, barTop - 4);
+    if (S.hist.length > 1) {
+      const t0 = S.hist[0][0], t1 = Math.max(S.hist[S.hist.length - 1][0], t0 + 1);
+      ctx.strokeStyle = css('--accent'); ctx.lineWidth = 2; ctx.beginPath();
+      S.hist.forEach(([t, x], i) => { const X = gx + (t - t0) / (t1 - t0) * gw, Y = gy - x / S.a() * barH / 2; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+      ctx.stroke();
+    }
+  }
+  $('ss-x').textContent = fmt(S.x, 3) + ' м'; $('ss-ek').textContent = fmt(Ek, 3) + ' Дж'; $('ss-ep').textContent = fmt(Ep, 3) + ' Дж';
+}
+$('s-run').onclick = () => { S.running = !S.running; $('s-run').textContent = S.running ? '⏸ Пауза' : '▶ Пуск'; };
+$('s-reset').onclick = resetSpring;
+
+/* ================= Столкновения ================= */
+const C = { running: false };
+C.m1 = bindRange('c-m1', 'cv-m1', 'кг', () => resetCollision());
+C.v1 = bindRange('c-v1', 'cv-v1', 'м/с', () => resetCollision());
+C.m2 = bindRange('c-m2', 'cv-m2', 'кг', () => resetCollision());
+C.v2 = bindRange('c-v2', 'cv-v2', 'м/с', () => resetCollision());
+C.e = bindRange('c-e', 'cv-e', '', () => resetCollision(), 2);
+const radius = m => 12 + Math.sqrt(m) * 8;
+function resetCollision() {
+  const m1 = C.m1(), m2 = C.m2(), v1 = C.v1(), v2 = C.v2(), e = C.e();
+  Object.assign(C, { x1: 3, x2: 7, u1: v1, u2: v2, hit: false, running: false });
+  $('c-run').textContent = '▶ Пуск';
+  const p0 = m1 * v1 + m2 * v2, E0 = m1 * v1 * v1 / 2 + m2 * v2 * v2 / 2;
+  const w1 = (m1 * v1 + m2 * v2 + m2 * e * (v2 - v1)) / (m1 + m2);
+  const w2 = (m1 * v1 + m2 * v2 + m1 * e * (v1 - v2)) / (m1 + m2);
+  C.after = [w1, w2];
+  $('cs-p0').textContent = fmt(p0, 2) + ' кг·м/с'; $('cs-e0').textContent = fmt(E0, 2) + ' Дж';
+  $('cs-p1').textContent = $('cs-e1').textContent = $('cs-v').textContent = '—';
+}
+resetCollision();
+function stepCollision(dt) {
+  const o = canvases['c-canvas']; const W = 10; // ширина дорожки в метрах
+  const sc = o.w / W, r1 = radius(C.m1()) / sc, r2 = radius(C.m2()) / sc;
+  C.x1 += C.u1 * dt; C.x2 += C.u2 * dt;
+  if (!C.hit && C.x2 - C.x1 <= r1 + r2 && C.u1 > C.u2) {
+    C.hit = true; [C.u1, C.u2] = C.after;
+    const m1 = C.m1(), m2 = C.m2();
+    $('cs-p1').textContent = fmt(m1 * C.u1 + m2 * C.u2, 2) + ' кг·м/с';
+    $('cs-e1').textContent = fmt(m1 * C.u1 ** 2 / 2 + m2 * C.u2 ** 2 / 2, 2) + ' Дж';
+    $('cs-v').textContent = fmt(C.u1, 2) + ' и ' + fmt(C.u2, 2);
+  }
+  if ((C.x1 < -1 || C.x1 > W + 1) && (C.x2 < -1 || C.x2 > W + 1)) C.running = false;
+}
+function drawCollision() {
+  const o = canvases['c-canvas'], ctx = o.ctx; if (!o.w) return;
+  ctx.clearRect(0, 0, o.w, o.h);
+  const sc = o.w / 10, cy = o.h * 0.55;
+  ctx.fillStyle = css('--grid'); ctx.fillRect(0, cy + 40, o.w, 3);
+  [[C.x1, C.m1(), C.u1, css('--accent'), '1'], [C.x2, C.m2(), C.u2, css('--accent2'), '2']].forEach(([x, m, u, col, n]) => {
+    const r = radius(m), X = x * sc, Y = cy + 40 - r;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X, Y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(n, X, Y + 5);
+    if (Math.abs(u) > 0.01) { // стрелка скорости
+      const L = u * 18; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(X, Y - r - 14); ctx.lineTo(X + L, Y - r - 14); ctx.stroke();
+      const d = Math.sign(L); ctx.beginPath(); ctx.moveTo(X + L + d * 8, Y - r - 14); ctx.lineTo(X + L, Y - r - 20); ctx.lineTo(X + L, Y - r - 8); ctx.fill();
+      ctx.font = '12px system-ui'; ctx.fillText(fmt(u, 1) + ' м/с', X, Y - r - 26);
+    }
+    ctx.textAlign = 'left';
+  });
+}
+$('c-run').onclick = () => {
+  if (C.running) { C.running = false; $('c-run').textContent = '▶ Пуск'; return; }
+  if (C.hit && !(C.x1 > -1 && C.x1 < 11) && !(C.x2 > -1 && C.x2 < 11)) resetCollision();
+  C.running = true; $('c-run').textContent = '⏸ Пауза';
+};
+$('c-reset').onclick = resetCollision;
+
+/* ================= Главный цикл ================= */
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  if (activeTab === 'pendulum') { if (M.running) stepPendulum(dt); drawPendulum(); }
+  if (activeTab === 'spring') { if (S.running) stepSpring(dt); drawSpring(); }
+  if (activeTab === 'collision') { if (C.running) stepCollision(dt); drawCollision(); if (!C.running) $('c-run').textContent = '▶ Пуск'; }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ================= Формулы и калькулятор ================= */
+const FORMULAS = [
+  { topic: 'Кинематика', name: 'Скорость при равномерном движении', f: 'v = s / t',
+    vars: [['s', 'Путь, м'], ['t', 'Время, с']], calc: v => ['v', v.s / v.t, 'м/с'] },
+  { topic: 'Кинематика', name: 'Путь при равноускоренном движении', f: 's = v₀t + at²/2',
+    vars: [['v0', 'Начальная скорость, м/с'], ['a', 'Ускорение, м/с²'], ['t', 'Время, с']], calc: v => ['s', v.v0 * v.t + v.a * v.t ** 2 / 2, 'м'] },
+  { topic: 'Динамика', name: 'Второй закон Ньютона', f: 'F = m·a',
+    vars: [['m', 'Масса, кг'], ['a', 'Ускорение, м/с²']], calc: v => ['F', v.m * v.a, 'Н'] },
+  { topic: 'Динамика', name: 'Сила тяжести', f: 'F = m·g',
+    vars: [['m', 'Масса, кг'], ['g', 'g, м/с² (Земля 9.8)']], calc: v => ['F', v.m * v.g, 'Н'] },
+  { topic: 'Динамика', name: 'Закон всемирного тяготения', f: 'F = G·m₁m₂ / r²',
+    vars: [['m1', 'Масса 1, кг'], ['m2', 'Масса 2, кг'], ['r', 'Расстояние, м']], calc: v => ['F', 6.674e-11 * v.m1 * v.m2 / v.r ** 2, 'Н'] },
+  { topic: 'Законы сохранения', name: 'Импульс', f: 'p = m·v',
+    vars: [['m', 'Масса, кг'], ['v', 'Скорость, м/с']], calc: v => ['p', v.m * v.v, 'кг·м/с'] },
+  { topic: 'Законы сохранения', name: 'Кинетическая энергия', f: 'Eк = m·v² / 2',
+    vars: [['m', 'Масса, кг'], ['v', 'Скорость, м/с']], calc: v => ['Eк', v.m * v.v ** 2 / 2, 'Дж'] },
+  { topic: 'Законы сохранения', name: 'Потенциальная энергия', f: 'Eп = m·g·h',
+    vars: [['m', 'Масса, кг'], ['h', 'Высота, м']], calc: v => ['Eп', v.m * 9.8 * v.h, 'Дж'] },
+  { topic: 'Работа и мощность', name: 'Мощность', f: 'N = A / t',
+    vars: [['A', 'Работа, Дж'], ['t', 'Время, с']], calc: v => ['N', v.A / v.t, 'Вт'] },
+  { topic: 'Гидростатика', name: 'Давление жидкости', f: 'p = ρ·g·h',
+    vars: [['rho', 'Плотность, кг/м³ (вода 1000)'], ['h', 'Глубина, м']], calc: v => ['p', v.rho * 9.8 * v.h, 'Па'] },
+  { topic: 'Гидростатика', name: 'Сила Архимеда', f: 'Fа = ρ·g·V',
+    vars: [['rho', 'Плотность жидкости, кг/м³'], ['V', 'Объём тела, м³']], calc: v => ['Fа', v.rho * 9.8 * v.V, 'Н'] },
+  { topic: 'Теплота', name: 'Количество теплоты', f: 'Q = c·m·Δt',
+    vars: [['c', 'Уд. теплоёмкость, Дж/(кг·°C) (вода 4200)'], ['m', 'Масса, кг'], ['dt', 'Δt, °C']], calc: v => ['Q', v.c * v.m * v.dt, 'Дж'] },
+  { topic: 'Электричество', name: 'Закон Ома', f: 'I = U / R',
+    vars: [['U', 'Напряжение, В'], ['R', 'Сопротивление, Ом']], calc: v => ['I', v.U / v.R, 'А'] },
+  { topic: 'Электричество', name: 'Мощность тока', f: 'P = U·I',
+    vars: [['U', 'Напряжение, В'], ['I', 'Сила тока, А']], calc: v => ['P', v.U * v.I, 'Вт'] },
+  { topic: 'Колебания и волны', name: 'Длина волны', f: 'λ = v / ν',
+    vars: [['v', 'Скорость волны, м/с'], ['nu', 'Частота, Гц']], calc: v => ['λ', v.v / v.nu, 'м'] },
+];
+const sel = $('f-sel');
+FORMULAS.forEach((f, i) => sel.add(new Option(`${f.topic}: ${f.name} (${f.f})`, i)));
+function renderCalc() {
+  const f = FORMULAS[sel.value], box = $('f-inputs');
+  box.innerHTML = f.vars.map(([k, l]) => `<div><label style="margin:0 0 2px">${l}</label><input type="number" step="any" data-k="${k}"></div>`).join('');
+  box.querySelectorAll('input').forEach(inp => inp.addEventListener('input', compute));
+  compute();
+}
+function compute() {
+  const f = FORMULAS[sel.value], vals = {}; let ok = true;
+  $('f-inputs').querySelectorAll('input').forEach(inp => { if (inp.value === '') ok = false; vals[inp.dataset.k] = parseFloat(inp.value); });
+  if (!ok) { $('f-res').textContent = 'Введите все значения'; return; }
+  const [n, r, u] = f.calc(vals);
+  $('f-res').textContent = isFinite(r) ? `${n} = ${pretty(r)} ${u}` : 'Деление на ноль — проверьте данные';
+}
+function pretty(x) { const a = Math.abs(x); return (a !== 0 && (a < 1e-3 || a >= 1e7) ? x.toExponential(3) : (+x.toFixed(4)).toString()).replace('.', ','); }
+sel.addEventListener('change', renderCalc); renderCalc();
+const topics = [...new Set(FORMULAS.map(f => f.topic))];
+$('f-cards').innerHTML = topics.map(t => `<div class="card"><h3>${t}</h3>` +
+  FORMULAS.filter(f => f.topic === t).map(f => `<div class="formula">${f.f}</div><p>${f.name}</p>`).join('') + '</div>').join('');
+
+resizeAll();
+</script>
+</body>
+</html>
